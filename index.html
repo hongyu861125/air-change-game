@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>六年級自然實驗：氣體的熱脹冷縮 (完美修正版)</title>
+    <style>
+        :root {
+            --primary: #4A90E2;
+            --secondary: #50E3C2;
+            --dark: #333;
+            --light: #F5F7FA;
+            --danger: #E94B3C;
+        }
+        body {
+            font-family: 'Microsoft JhengHei', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #e8eff5;
+            color: var(--dark);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: var(--primary);
+            text-align: center;
+            margin-top: 0;
+        }
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        /* 上方畫布區 */
+        #canvas-container {
+            width: 100%;
+            height: 400px;
+            background-color: #fff;
+            border-bottom: 2px solid #eee;
+            position: relative;
+            cursor: grab;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #canvas-container:active {
+            cursor: grabbing;
+        }
+        /* 下方控制與學習單區 */
+        .panel {
+            padding: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            background-color: var(--light);
+        }
+        .control-box, .worksheet-box {
+            flex: 1;
+            min-width: 300px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        h3 {
+            margin-top: 0;
+            color: var(--primary);
+            border-bottom: 2px solid var(--secondary);
+            padding-bottom: 5px;
+        }
+        /* 控制元件 */
+        .slider-container {
+            margin: 15px 0;
+        }
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+        }
+        .data-monitor {
+            background: #2c3e50;
+            color: #2ecc71;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 1.1em;
+            line-height: 1.5;
+        }
+        /* 學習單元件 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th { background-color: var(--primary); color: white; }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: 0.2s;
+        }
+        button:hover { background-color: #357ABD; }
+        .quiz-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed #ccc;
+        }
+        .question { margin-bottom: 10px; }
+        .feedback { font-weight: bold; margin-left: 10px; }
+        .correct { color: green; }
+        .wrong { color: red; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🧪 氣體熱脹冷縮模擬實驗</h1>
+        
+        <div id="canvas-container">
+            <canvas id="simCanvas"></canvas>
+        </div>
+
+        <div class="panel">
+            <div class="control-box">
+                <h3>🎛️ 實驗操作與監測</h3>
+                <p>💡 提示：將錐形瓶拖曳到右側的燒杯中，並調整燒杯水溫。</p>
+                <div class="slider-container">
+                    <label for="waterTemp">燒杯水溫：<span id="waterTempLabel">25</span> °C</label>
+                    <input type="range" id="waterTemp" min="0" max="100" value="25">
+                </div>
+                <div class="data-monitor">
+                    <div>🌡️ 瓶內溫度: <span id="flaskTempDisplay">25.0</span> °C</div>
+                    <div>🎈 氣球體積: <span id="balloonVolDisplay">適中</span></div>
+                    <div style="font-size:0.8em; color:#ccc; margin-top:5px;">(嚴格粒子物理邊界運算中...)</div>
+                </div>
+            </div>
+
+            <div class="worksheet-box">
+                <h3>📝 探究學習單</h3>
+                <button id="btnRecord">📥 記錄當前數據</button>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>水溫條件</th>
+                            <th>瓶內溫度</th>
+                            <th>氣球狀態</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTable"></tbody>
+                </table>
+
+                <div class="quiz-section">
+                    <div class="question">
+                        1. 當錐形瓶放入熱水中，氣球會如何變化？<br>
+                        <select id="q1">
+                            <option value="">請選擇...</option>
+                            <option value="1">膨脹變大</option>
+                            <option value="2">收縮變小</option>
+                            <option value="3">沒有變化</option>
+                        </select>
+                        <span id="f1" class="feedback"></span>
+                    </div>
+                    <div class="question">
+                        2. 氣體受熱膨脹的科學原因是？<br>
+                        <select id="q2">
+                            <option value="">請選擇...</option>
+                            <option value="1">空氣粒子數量變多</option>
+                            <option value="2">空氣粒子本身的體積變大</option>
+                            <option value="3">空氣粒子運動變快，粒子間距離變大</option>
+                        </select>
+                        <span id="f2" class="feedback"></span>
+                    </div>
+                    <button id="btnSubmit">✔️ 驗證答案</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+
+        // 實驗物件狀態
+        let waterBath = { x: 0, y: 0, w: 200, h: 150, temp: 25 };
+        let flask = { 
+            x: 100, y: 0, 
+            w: 80, h: 120, 
+            temp: 25, 
+            isDragging: false, 
+            offsetX: 0, offsetY: 0,
+            inWater: false
+        };
+        let particles = [];
+        const numParticles = 80;
+
+        function resize() {
+            width = canvas.parentElement.clientWidth;
+            height = canvas.parentElement.clientHeight;
+            canvas.width = width;
+            canvas.height = height;
+            
+            waterBath.x = width - 250;
+            waterBath.y = height - waterBath.h - 20;
+            
+            if(!flask.isDragging) {
+                flask.y = height - flask.h - 20;
+            }
+        }
+        window.addEventListener('resize', resize);
+        
+        // 初始產生粒子 (確保完全在瓶內)
+        for(let i = 0; i < numParticles; i++) {
+            let py = Math.random() * (flask.h - 20) + 10; 
+            let xMin = 20 - (20 / flask.h) * py + 8;
+            let xMax = (flask.w - 20) + (20 / flask.h) * py - 8;
+            let px = xMin + Math.random() * (xMax - xMin);
+
+            particles.push({
+                x: px,
+                y: py,
+                vx: (Math.random() - 0.5) * 2.5,
+                vy: (Math.random() - 0.5) * 2.5
+            });
+        }
+
+        // 滑桿監聽
+        const waterTempSlider = document.getElementById('waterTemp');
+        const waterTempLabel = document.getElementById('waterTempLabel');
+        waterTempSlider.addEventListener('input', (e) => {
+            waterBath.temp = parseInt(e.target.value);
+            waterTempLabel.innerText = waterBath.temp;
+        });
+
+        // 拖曳邏輯
+        function startDrag(e) {
+            let clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+            let clientY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+            let rect = canvas.getBoundingClientRect();
+            let mouseX = clientX - rect.left;
+            let mouseY = clientY - rect.top;
+
+            // 包含氣球部位的點擊判定
+            if (mouseX >= flask.x && mouseX <= flask.x + flask.w &&
+                mouseY >= flask.y - 60 && mouseY <= flask.y + flask.h) {
+                flask.isDragging = true;
+                flask.offsetX = mouseX - flask.x;
+                flask.offsetY = mouseY - flask.y;
+            }
+        }
+
+        function drag(e) {
+            if (!flask.isDragging) return;
+            e.preventDefault();
+            let clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+            let clientY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+            let rect = canvas.getBoundingClientRect();
+            flask.x = clientX - rect.left - flask.offsetX;
+            flask.y = clientY - rect.top - flask.offsetY;
+        }
+
+        function endDrag() {
+            if(flask.isDragging) {
+                flask.isDragging = false;
+                let flaskCenterX = flask.x + flask.w / 2;
+                let flaskBottomY = flask.y + flask.h;
+                
+                if (flaskCenterX > waterBath.x && flaskCenterX < waterBath.x + waterBath.w &&
+                    flaskBottomY > waterBath.y) {
+                    flask.x = waterBath.x + (waterBath.w - flask.w) / 2;
+                    flask.y = waterBath.y + waterBath.h - flask.h;
+                    flask.inWater = true;
+                } else {
+                    flask.y = height - flask.h - 20;
+                    flask.inWater = false;
+                }
+            }
+        }
+
+        canvas.addEventListener('mousedown', startDrag);
+        canvas.addEventListener('mousemove', drag);
+        window.addEventListener('mouseup', endDrag);
+        canvas.addEventListener('touchstart', startDrag, {passive: false});
+        canvas.addEventListener('touchmove', drag, {passive: false});
+        window.addEventListener('touchend', endDrag);
+
+        // 繪圖迴圈
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+
+            ctx.fillStyle = "#dcdde1";
+            ctx.fillRect(0, height - 20, width, 20);
+
+            // 溫度更新
+            let targetTemp = flask.inWater ? waterBath.temp : 25;
+            flask.temp += (targetTemp - flask.temp) * 0.02;
+
+            document.getElementById('flaskTempDisplay').innerText = flask.temp.toFixed(1);
+            let balloonStatus = "適中";
+            if(flask.temp > 40) balloonStatus = "膨脹變大 ↗";
+            if(flask.temp < 15) balloonStatus = "收縮變小 ↘";
+            document.getElementById('balloonVolDisplay').innerText = balloonStatus;
+
+            // 畫燒杯與水
+            ctx.fillStyle = "rgba(200, 200, 200, 0.5)";
+            ctx.fillRect(waterBath.x, waterBath.y, waterBath.w, waterBath.h);
+            ctx.strokeStyle = "#888";
+            ctx.strokeRect(waterBath.x, waterBath.y, waterBath.w, waterBath.h);
+            
+            let r_color = Math.min(255, waterBath.temp * 2.5);
+            let b_color = Math.min(255, 255 - waterBath.temp * 2.5);
+            ctx.fillStyle = `rgba(${r_color}, 50, ${b_color}, 0.6)`;
+            ctx.fillRect(waterBath.x, waterBath.y + 20, waterBath.w, waterBath.h - 20);
+
+            // ================= 繪圖分層 =================
+
+            // 1. 畫錐形瓶主體
+            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+            ctx.beginPath();
+            ctx.moveTo(flask.x + 20, flask.y); // 頂部左
+            ctx.lineTo(flask.x + 60, flask.y); // 頂部右
+            ctx.lineTo(flask.x + 80, flask.y + flask.h); // 底部右
+            ctx.lineTo(flask.x, flask.y + flask.h); // 底部左
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = "#555";
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // 設定氣球參數
+            let baseRadius = 25;
+            let balloonRadius = Math.max(20, baseRadius + (flask.temp - 25) * 0.4); 
+            let balloonCY = -12 - balloonRadius * 0.6; // 氣球圓心位置 (Y)
+
+            // 2. 畫氣球圓形主體
+            ctx.beginPath();
+            ctx.arc(flask.x + 40, flask.y + balloonCY, balloonRadius, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(233, 75, 60, 0.95)";
+            ctx.fill();
+            ctx.strokeStyle = "#c0392b";
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // 3. 畫氣球頸部填色 (巧妙覆蓋掉瓶口與圓形下方的線條)
+            ctx.beginPath();
+            ctx.moveTo(flask.x + 20, flask.y - 20); // 從圓形內部開始
+            ctx.lineTo(flask.x + 60, flask.y - 20);
+            ctx.lineTo(flask.x + 65, flask.y + 15); // 向下包覆住瓶口外側
+            ctx.lineTo(flask.x + 15, flask.y + 15);
+            ctx.closePath();
+            ctx.fill();
+
+            // 4. 畫氣球頸部的左右邊線
+            ctx.beginPath();
+            ctx.moveTo(flask.x + 20, flask.y - 18);
+            ctx.lineTo(flask.x + 15, flask.y + 15);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(flask.x + 60, flask.y - 18);
+            ctx.lineTo(flask.x + 65, flask.y + 15);
+            ctx.stroke();
+
+            // 5. 畫氣球底部的「橡皮捲邊」
+            ctx.beginPath();
+            ctx.moveTo(flask.x + 13, flask.y + 15);
+            ctx.lineTo(flask.x + 67, flask.y + 15);
+            ctx.lineWidth = 5;
+            ctx.lineCap = "round";
+            ctx.stroke();
+            ctx.lineCap = "butt"; // 重置
+
+            // ================= 粒子嚴格碰撞運算 =================
+            let speedMulti = 0.5 + (flask.temp / 30);
+            let cx = 40; 
+            let cy = balloonCY;
+            let r = balloonRadius;
+            let margin = 4; // 粒子半徑 + 預留安全距離
+
+            ctx.fillStyle = "#e67e22";
+            particles.forEach(p => {
+                p.x += p.vx * speedMulti;
+                p.y += p.vy * speedMulti;
+
+                if (p.y >= 0) {
+                    // 【區域 A：錐形瓶內部 (梯形)】
+                    // 精確計算粒子當下高度的合法 X 範圍
+                    let xMin = 20 - (20 / flask.h) * p.y + margin;
+                    let xMax = 60 + (20 / flask.h) * p.y - margin;
+
+                    // 底部反彈
+                    if (p.y >= flask.h - margin) {
+                        p.y = flask.h - margin;
+                        p.vy = -Math.abs(p.vy); // 強制向上
+                    }
+                    // 左右斜面絕對限制
+                    if (p.x < xMin) {
+                        p.x = xMin;
+                        p.vx = Math.abs(p.vx); // 強制向右
+                    }
+                    if (p.x > xMax) {
+                        p.x = xMax;
+                        p.vx = -Math.abs(p.vx); // 強制向左
+                    }
+
+                } else if (p.y < 0 && p.y >= -15) {
+                    // 【區域 B：氣球頸部 (接近長方形)】
+                    if (p.x < 20 + margin) { 
+                        p.x = 20 + margin; 
+                        p.vx = Math.abs(p.vx); 
+                    }
+                    if (p.x > 60 - margin) { 
+                        p.x = 60 - margin; 
+                        p.vx = -Math.abs(p.vx); 
+                    }
+
+                } else {
+                    // 【區域 C：氣球主體 (圓形)】
+                    let dx = p.x - cx;
+                    let dy = p.y - cy;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+
+                    // 如果超出氣球圓周
+                    if (dist > r - margin) {
+                        let nx = dx / dist;
+                        let ny = dy / dist;
+                        let dot = p.vx * nx + p.vy * ny;
+                        
+                        // 法向量反射
+                        p.vx -= 2 * dot * nx;
+                        p.vy -= 2 * dot * ny;
+                        
+                        // 強制拉回圓內
+                        p.x = cx + nx * (r - margin);
+                        p.y = cy + ny * (r - margin);
+                    }
+                }
+
+                // 畫出粒子
+                ctx.beginPath();
+                ctx.arc(flask.x + p.x, flask.y + p.y, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            requestAnimationFrame(draw);
+        }
+
+        resize();
+        draw();
+
+        // 學習單功能
+        document.getElementById('btnRecord').addEventListener('click', () => {
+            let table = document.getElementById('dataTable');
+            let tr = document.createElement('tr');
+            let condition = flask.inWater ? `${waterBath.temp}°C 水中` : "桌面 (室溫)";
+            let tempStr = flask.temp.toFixed(1) + " °C";
+            let status = document.getElementById('balloonVolDisplay').innerText;
+            tr.innerHTML = `<td>${condition}</td><td>${tempStr}</td><td>${status}</td>`;
+            table.appendChild(tr);
+        });
+
+        document.getElementById('btnSubmit').addEventListener('click', () => {
+            let q1 = document.getElementById('q1').value;
+            let q2 = document.getElementById('q2').value;
+            let f1 = document.getElementById('f1');
+            let f2 = document.getElementById('f2');
+
+            if(q1 === "1") {
+                f1.innerHTML = "✅ 答對了！氣體遇熱會膨脹。";
+                f1.className = "feedback correct";
+            } else if (q1 !== "") {
+                f1.innerHTML = "❌ 再想想看，觀察氣球的變化！";
+                f1.className = "feedback wrong";
+            }
+
+            if(q2 === "3") {
+                f2.innerHTML = "✅ 答對了！粒子本身大小不變，是運動變劇烈導致距離拉大。";
+                f2.className = "feedback correct";
+            } else if (q2 !== "") {
+                f2.innerHTML = "❌ 觀察橘色小粒子的變化，它們數量變多了還是距離變遠了？";
+                f2.className = "feedback wrong";
+            }
+        });
+    </script>
+</body>
+</html>
